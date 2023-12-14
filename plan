@@ -1,0 +1,47 @@
+main:
+
+
+
+void myFunction() {
+
+}
+
+
+
+int myVariable = 1;
+
+
+
+goto main;
+
+
+
+{
+// new scope (also this is comment) 
+}
+
+
+
+use "filename.wtii"  // Includes file scope into current file
+
+
+
+class myType {
+    int myVariable = 1;
+    void myFunction() {
+        int myVariable = 2;
+        myVariable = 3;
+    }
+}
+
+
+
+Entry point is:
+main:
+or
+int main()
+or
+void main()
+or start of file
+
+in that priority order
