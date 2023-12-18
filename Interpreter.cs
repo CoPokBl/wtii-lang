@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
 using Newtonsoft.Json;
 using WhatTimeIsIt.Builtins;
 using WhatTimeIsIt.ParsedScripts;
@@ -12,12 +10,25 @@ namespace WhatTimeIsIt;
 public static class Interpreter {
     private static Stack<Scope> _scopes = null!;
     private static readonly Constant Null = new("NULL", "NULL");
+    private const bool DebugLogging = false;
     
     private static Scope CurrentScope => _scopes.Peek();
-    private static void NewScope() => _scopes.Push(new Scope(CurrentScope));
-    private static void EndScope() => _scopes.Pop();
+    private static void NewScope() {
+        _scopes.Push(new Scope(CurrentScope));
+        Debug($"==== NEW SCOPE ==== ({Utils.GetFileAndLine(2)})");
+    }
+    private static void EndScope() {
+        Scope oldScope = _scopes.Pop();
+        
+        // If any of the variables exist in the higher level scope, update them
+        foreach (KeyValuePair<string, Value> kvp in oldScope.Variables) {
+            if (!CurrentScope.Variables.ContainsKey(kvp.Key)) continue;
+            CurrentScope.Variables[kvp.Key] = kvp.Value;
+        }
+        Debug($"==== END SCOPE ==== ({Utils.GetFileAndLine(2)})");
+    }
     public static void Debug(string s) {
-        //Console.WriteLine("[DEBUG] " + s);
+        if (DebugLogging) Console.WriteLine("[DEBUG] " + s);
     }
     
     public static ScriptException Error(string msg) {
@@ -127,7 +138,7 @@ public static class Interpreter {
             }
             currentHop = classInstance;
         }
-        currentHop.Properties[path[^1]] = newValue;
+        currentHop!.Properties[path[^1]] = newValue;
     }
     
     private static MethodDefinition? GetMethodDefinition(FunctionCall call, out ClassInstance? parentClass) {
@@ -192,9 +203,10 @@ public static class Interpreter {
         
         // Check for changed variables
         if (parentClass != null) {
+            Debug("Checking for changed variables in class...");
             foreach (KeyValuePair<string, Value> kvp in parentClass.Properties) {
                 if (CurrentScope.Variables[kvp.Key] == parentClass.Properties[kvp.Key]) continue;
-                parentClass.Properties[kvp.Key] = CurrentScope.Variables[kvp.Key.Print("Changed var:")].Print("To Value:");
+                parentClass.Properties[kvp.Key] = CurrentScope.Variables[kvp.Key.Debug("Changed var:")].Debug("To Value:");
             }
         }
         

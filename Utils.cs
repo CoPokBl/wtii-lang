@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using WhatTimeIsIt.ParsedScripts.Statements;
@@ -116,6 +117,12 @@ public static class Utils {
     
     public static string CombineVariablePath(this string[] path) {
         return string.Join(".", path);
+    }
+    
+    public static string GetFileAndLine(int stackOffset) {
+        StackTrace stackTrace = new(stackOffset, true);
+        StackFrame frame = stackTrace.GetFrame(0)!;
+        return $"{frame.GetFileName()}:{frame.GetFileLineNumber()}";
     }
     
 }
