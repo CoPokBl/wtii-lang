@@ -24,7 +24,8 @@ public static class BuiltIns {
         { "read_key", IO.ReadKey },
         { "read_line", IO.ReadLine },
         { "type_of", Standard.TypeOf },
-        { "to_json", Json.ToJson }
+        { "to_json", Json.ToJson },
+        { "get_array_object", Standard.GetArrayObject }
     };
     
     public static readonly Dictionary<string, MethodDefinition> MethodDefinitions = new() {
@@ -45,6 +46,7 @@ public static class BuiltIns {
         { "read_key", new MethodDefinition("read_key", "string") },
         { "read_line", new MethodDefinition("read_line", "string") },
         { "type_of", new MethodDefinition("type_of", "string", ("val", "any")) },
-        { "to_json", new MethodDefinition("to_json", "string", ("val", "any")) }
+        { "to_json", new MethodDefinition("to_json", "string", ("val", "any")) },
+        { "get_array_object", new MethodDefinition("get_array_object", "any", ("arr", "any[]"), ("index", "int")) }
     };
 }

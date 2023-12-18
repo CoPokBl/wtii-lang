@@ -176,7 +176,10 @@ public static class Interpreter {
                 evaledArgs[i] = ResolveValue(call.Arguments[i], def.ArgumentTypes[i]);
             }
             for (int i = 0; i < def.Arguments.Length; i++) {
-                if (def.ArgumentTypes[i] != evaledArgs[i].ObjectType && def.ArgumentTypes[i] != "any") {
+                if (def.ArgumentTypes[i] == "any" || (def.ArgumentTypes[i] == "any[]" && evaledArgs[i].ObjectType.EndsWith("[]"))) {
+                    continue;
+                }
+                if (def.ArgumentTypes[i] != evaledArgs[i].ObjectType) {
                     throw Error("Argument type mismatch in function call: " + callName + ". Expected " + def.ArgumentTypes[i] + " but got " + call.Arguments[i].ObjectType + ".");
                 }
             }
@@ -228,7 +231,8 @@ public static class Interpreter {
         NewScope();
         for (int i = 0; i < method.Arguments.Length; i++) {
             string argumentType = method.ArgumentTypes[i];
-            if (argumentType != args[i].ObjectType && argumentType != "any") {
+            bool isAny = argumentType == "any" || (argumentType == "any[]" && args[i].ObjectType.EndsWith("[]"));
+            if (argumentType != args[i].ObjectType && !isAny) {
                 throw Error("Argument type mismatch in function call: " + callName + ". Expected " + argumentType + " but got " + args[i].ObjectType + ".");
             }
             string arg = method.Arguments[i];

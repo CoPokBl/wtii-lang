@@ -244,6 +244,28 @@ public static class Parser {
             type = className;
             return new ClassInstance(classDef);
         }
+
+        if (value.StartsWith('[') && value.EndsWith(']')) {
+            // Array init
+            string[] parts = value[1..^1].SafeSplit(',');
+            parts = parts.Select(s => s.Trim()).ToArray();
+            Value[] values = parts.Select(EvalValue).ToArray();
+            string? vType = null;
+            if (!values.All(v => {
+                    if (vType == null) {
+                        vType = v.ObjectType;
+                        return true;
+                    }
+                    bool didMatch = v.ObjectType == vType;
+                    vType = v.ObjectType;
+                    return didMatch;
+                })) {
+                throw new Exception("Array values must all be the same type.");
+            }
+            vType ??= "NULL";
+            type = vType;
+            return new ArrayValue(type, values);
+        }
         
         if (value.Contains('(') && value.Contains(')')) {
             string methodName = value.Split('(', 2)[0];
@@ -254,7 +276,19 @@ public static class Parser {
             return new MethodCall(parts, valueArgs.Select(v => v ?? new Constant("NULL", "NULL")).ToArray(), type);
         }
         
-        return ParseDotNotationVariable(value, out type);
+        bool hasArrayIndex = value.Contains('[') && value.EndsWith(']');
+        string dotNotationValue = hasArrayIndex ? value.Split('[')[0] : value;
+        Variable var = ParseDotNotationVariable(dotNotationValue, out type);
+        if (!hasArrayIndex) return var;
+        {
+            string[] parts = value.Split('[');
+            string indexString = parts[1][..^1];
+            Value index = EvalValue(indexString);
+            if (index.ObjectType != "int") {
+                throw new Exception("Array index must be an integer.");
+            }
+            return new MethodCall("get_array_object".SingleEnumerate(), new[] {var, index}, "string");
+        }
     }
     
     /// <summary>

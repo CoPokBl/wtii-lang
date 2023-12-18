@@ -25,10 +25,11 @@ public static class Standard {
     
     public static Value Str(Value[] args) {
         RealReference reference = Interpreter.ResolveValue(args[0]);
-        if (reference is not Constant constant) {
-            throw Interpreter.Error("str() argument must be a constant.");
-        }
-        return new Constant(constant.Value, "string");
+        return reference switch {
+            Constant constant => new Constant(constant.Value, "string"),
+            ClassInstance => Json.ToJson(args),
+            _ => throw Interpreter.Error("str() does not support this type.")
+        };
     }
     
     public static Value Add(Value[] args) {
@@ -92,6 +93,13 @@ public static class Standard {
     
     public static Value TypeOf(Value[] args) {
         return new Constant(args[0].ObjectType, "string");
+    }
+
+    public static Value GetArrayObject(Value[] args) {
+        // getarrayobject(array, index)
+        ArrayValue array = (ArrayValue) args[0];
+        int index = int.Parse(args[1].ToString()!);
+        return array.Values[index];
     }
     
 }
