@@ -8,15 +8,40 @@ using WhatTimeIsIt.ParsedScripts.Values;
 namespace WhatTimeIsIt; 
 
 public static class Interpreter {
+    
+    /// <summary>
+    /// A scope contains all variables and functions that are accessible in the current scope.
+    /// </summary>
     private static Stack<Scope> _scopes = null!;
+    
+    /// <summary>
+    /// The null constant.
+    /// </summary>
     private static readonly Constant Null = new("NULL", "NULL");
+    
+    /// <summary>
+    /// Whether or not to log debug messages.
+    /// </summary>
     private const bool DebugLogging = false;
     
+    /// <summary>
+    /// Gets the currently loaded scope which will
+    /// include all variables and functions from the current scope and all parent scopes.
+    /// </summary>
     private static Scope CurrentScope => _scopes.Peek();
+    
+    /// <summary>
+    /// Creates a new scope and pushes it to the stack.
+    /// This scope will only contain the values from the previous scope.
+    /// </summary>
     private static void NewScope() {
         _scopes.Push(new Scope(CurrentScope));
         Debug($"==== NEW SCOPE ==== ({Utils.GetFileAndLine(2)})");
     }
+    
+    /// <summary>
+    /// Removes the current scope from the stack.
+    /// </summary>
     private static void EndScope() {
         Scope oldScope = _scopes.Pop();
         
@@ -27,18 +52,38 @@ public static class Interpreter {
         }
         Debug($"==== END SCOPE ==== ({Utils.GetFileAndLine(2)})");
     }
+    
+    /// <summary>
+    /// Print a debug message if debug logging is enabled.
+    /// </summary>
+    /// <param name="s">The message to print.</param>
     public static void Debug(string s) {
         if (DebugLogging) Console.WriteLine("[DEBUG] " + s);
     }
     
+    /// <summary>
+    /// Get a script exception with the given message.
+    /// </summary>
+    /// <param name="msg">The error message.</param>
+    /// <returns>A script exception which can be thrown.</returns>
     public static ScriptException Error(string msg) {
         return new ScriptException(Constant.FromString(msg));
     }
     
+    /// <summary>
+    /// Print a system stack trace for debugging.
+    /// </summary>
     private static void PrintStackTrace() {
         new StackTrace().Print();
     }
 
+    /// <summary>
+    /// Checks if a specified function is a valid conversion function for converting from fromType to toType.
+    /// </summary>
+    /// <param name="name">The function name.</param>
+    /// <param name="fromType">The type that is being converted from.</param>
+    /// <param name="toType">The type that is being converted to.</param>
+    /// <returns>Whether or not the function is a valid conversion function for the 2 types.</returns>
     private static bool IsCorrectConversionName(string name, string fromType, string toType) {
         if (name == fromType.ToLower() + "_to_" + toType.ToLower()) return true;
         if (name == "to_" + toType.ToLower()) return true;
@@ -48,6 +93,14 @@ public static class Interpreter {
         return false;
     }
 
+    /// <summary>
+    /// Find a valid conversion method for converting from fromType to toType from the provided list.
+    /// Returns null if no valid conversion method was found.
+    /// </summary>
+    /// <param name="definitions">The list of functions to check.</param>
+    /// <param name="fromType">The type being converted from.</param>
+    /// <param name="toType">The type being converted to.</param>
+    /// <returns>The found conversion function, null if none was found.</returns>
     private static MethodDefinition? SearchDefsForConversion(Dictionary<string, MethodDefinition> definitions, string fromType, string toType) {
         foreach ((string? name, MethodDefinition? value) in definitions) {
             if (!IsCorrectConversionName(name, fromType, toType)) continue;
@@ -59,6 +112,13 @@ public static class Interpreter {
         return null;
     }
 
+    /// <summary>
+    /// Find a valid conversion method for converting from fromType to toType from all valid sourced.
+    /// Returns null if no valid conversion method was found.
+    /// </summary>
+    /// <param name="fromType">The type being converted from.</param>
+    /// <param name="exceptedType">The type being converted to.</param>
+    /// <returns>The found conversion method, null if none was found.</returns>
     private static MethodDefinition? FindConversionMethod(string fromType, string exceptedType) {
         if (CurrentScope.Classes.TryGetValue(fromType, out ClassDefinition? classDef)) {
             MethodDefinition? classMethod = SearchDefsForConversion(classDef.Methods.ToMethodDictionary(), fromType, exceptedType);
@@ -73,6 +133,12 @@ public static class Interpreter {
         return builtinMethod;
     }
     
+    /// <summary>
+    /// Resolves a value to its real value.
+    /// </summary>
+    /// <param name="value">The value to resolve.</param>
+    /// <param name="exceptedType">The type to try and convert to, null if type doesn't matter.</param>
+    /// <returns>The real reference represented by the value.</returns>
     public static RealReference ResolveValue(Value value, string? exceptedType = null) {
         switch (value) {
             case RealReference constant:
@@ -95,6 +161,12 @@ public static class Interpreter {
         }
     }
 
+    /// <summary>
+    /// Evaluates a variable and returns its value.
+    /// </summary>
+    /// <param name="variable">The variable to evaluate.</param>
+    /// <returns>The value of the evaluated variable.</returns>
+    /// <exception cref="ScriptException">Thrown when the variable is not a class instance or when an infinite loop is detected.</exception>
     public static RealReference EvalVariable(Variable variable) {
         if (variable.Path.Length == 1) {
             return ResolveValue(CurrentScope.Variables.GetValueOrDefault(variable.Path[0], Null));
@@ -118,7 +190,13 @@ public static class Interpreter {
         }
         return ResolveValue(solvedValue);
     }
-
+    
+    /// <summary>
+    /// Set the value of a variable.
+    /// </summary>
+    /// <param name="path">The path of the variable.</param>
+    /// <param name="newValue">The value to set the variable to.</param>
+    /// <exception cref="ScriptException">If the path is invalid.</exception>
     public static void SetVariable(string[] path, Value newValue) {
         if (path.Length == 1) {
             if (!CurrentScope.Variables.ContainsKey(path[0])) {
@@ -141,12 +219,18 @@ public static class Interpreter {
         currentHop!.Properties[path[^1]] = newValue;
     }
     
+    /// <summary>
+    /// Retrieves the method definition of a function call.
+    /// </summary>
+    /// <param name="call">The function call to get the method definition for.</param>
+    /// <param name="parentClass">The class instance that the function belongs to, if any.</param>
+    /// <returns>The method definition of the function call, or null if not found.</returns>
     private static MethodDefinition? GetMethodDefinition(FunctionCall call, out ClassInstance? parentClass) {
         if (call.Path.Length == 1) {
             parentClass = null;
             return CurrentScope.Functions!.GetValueOrDefault(call.Path[0], null);
         }
-
+        
         ClassInstance? currentHop = null;
         for (int i = 0; i < call.Path.Length - 1; i++) {
             string currentToken = call.Path[i];
@@ -161,7 +245,12 @@ public static class Interpreter {
         return currentHop!.Methods!.GetValueOrDefault(call.Path[^1], null);
     }
 
-    // This won't return a value of type method call
+    /// <summary>
+    /// Evaluates a method call and returns its result.
+    /// </summary>
+    /// <param name="call">The method call to execute.</param>
+    /// <returns>The return value of the method.</returns>
+    /// <exception cref="ScriptException">Invalid method call.</exception>
     private static Value EvalFunction(FunctionCall call) {
         string callName = call.Path[0];
         
@@ -220,10 +309,24 @@ public static class Interpreter {
         return result;
     }
 
+    /// <summary>
+    /// Evaluates a method call and returns its result.
+    /// </summary>
+    /// <param name="call">The method call to execute.</param>
+    /// <returns>The return value of the method.</returns>
+    /// <exception cref="ScriptException">Invalid method call.</exception>
     private static Value EvalFunction(DirectMethod call) {
         return EvalFunction(call.Method, call.Arguments, "DIRECT METHOD");
     }
 
+    /// <summary>
+    /// Evaluates a method call and returns its result.
+    /// </summary>
+    /// <param name="method">The method to execute.</param>
+    /// <param name="args">The arguments to pass to the method.</param>
+    /// <param name="callName">The name of the method call.</param>
+    /// <returns>The return value of the method.</returns>
+    /// <exception cref="ScriptException">Invalid method call.</exception>
     private static Value EvalFunction(MethodDefinition method, Value[] args, string callName = "NOT SPECIFIC") {
         if (method.Arguments.Length != args.Length) {
             throw Error("Argument count mismatch in function call: " + callName + ". Expected " + method.Arguments.Length + " but got " + args.Length);
@@ -244,6 +347,11 @@ public static class Interpreter {
         return result;
     }
 
+    /// <summary>
+    /// Execute a script.
+    /// </summary>
+    /// <param name="script">The script to execute.</param>
+    /// <returns>The exit code of the script.</returns>
     public static int Execute(ParsedScript script) {
         // Global scope
         _scopes = new Stack<Scope>();
@@ -275,10 +383,23 @@ public static class Interpreter {
         return int.Parse(constant.Value);
     }
 
+    /// <summary>
+    /// Execute a function from its method definition.
+    /// </summary>
+    /// <param name="function">The method to execute.</param>
+    /// <returns>The return value of the function.</returns>
+    /// <exception cref="ScriptException">If a statement is invalid.</exception>
     public static Value ExecuteFunction(MethodDefinition function) {
         return ExecuteFunction(function, out _);
     }
     
+    /// <summary>
+    /// Execute a function from its method definition.
+    /// </summary>
+    /// <param name="function">The method to execute.</param>
+    /// <param name="didReturn">True if the function returned explicitly, false otherwise.</param>
+    /// <returns>The return value of the function.</returns>
+    /// <exception cref="ScriptException">If a statement is invalid.</exception>
     public static Value ExecuteFunction(MethodDefinition function, out bool didReturn) {
 
         try {
