@@ -1,4 +1,5 @@
 using WhatTimeIsIt.Builtins.Functions;
+using WhatTimeIsIt.Builtins.Libraries;
 using WhatTimeIsIt.ParsedScripts.Statements;
 using WhatTimeIsIt.ParsedScripts.Values;
 using Convert = WhatTimeIsIt.Builtins.Functions.Convert;
@@ -6,6 +7,10 @@ using Convert = WhatTimeIsIt.Builtins.Functions.Convert;
 namespace WhatTimeIsIt.Builtins; 
 
 public static class BuiltIns {
+    public static readonly Dictionary<string, Type> Libraries = new() {
+        { "http", typeof(Http) }
+    };
+    
     public static readonly Dictionary<string, Func<Value[], Value>> Functions = new() {
         { "print", IO.Print },
         { "println", IO.PrintLine },
@@ -25,7 +30,24 @@ public static class BuiltIns {
         { "read_line", IO.ReadLine },
         { "type_of", Standard.TypeOf },
         { "to_json", Json.ToJson },
-        { "get_array_object", Standard.GetArrayObject }
+        { "from_json", Json.FromJson },
+        { "get_array_object", Standard.GetArrayObject },
+        { "assert", Standard.Assert },
+        { "split", Standard.Split },
+        { "read_file_as_text", Files.ReadFileAsText },
+        { "write_text_to_file", Files.WriteTextToFile },
+        { "file_exists", Files.FileExists },
+        { "delete_file", Files.DeleteFile },
+        { "get_files", Files.GetFiles },
+        { "get_directories", Files.GetDirectories },
+        { "create_directory", Files.CreateDirectory },
+        { "delete_directory", Files.DeleteDirectory },
+        { "directory_exists", Files.DirectoryExists },
+        { "get_current_directory", Files.GetCurrentDirectory },
+        { "set_current_directory", Files.SetCurrentDirectory },
+        { "get_full_path", Files.GetFullPath },
+        { "load_lib", Standard.LoadLib },
+        { "get_var", Standard.GetVar }
     };
     
     public static readonly Dictionary<string, MethodDefinition> MethodDefinitions = new() {
@@ -47,6 +69,23 @@ public static class BuiltIns {
         { "read_line", new MethodDefinition("read_line", "string") },
         { "type_of", new MethodDefinition("type_of", "string", ("val", "any")) },
         { "to_json", new MethodDefinition("to_json", "string", ("val", "any")) },
-        { "get_array_object", new MethodDefinition("get_array_object", "any", ("arr", "any[]"), ("index", "int")) }
+        { "from_json", new MethodDefinition("from_json", "any", ("json", "string"), ("type", "class")) },
+        { "get_array_object", new MethodDefinition("get_array_object", "any", ("arr", "any[]"), ("index", "int")) },
+        { "assert", new MethodDefinition("assert", "null", ("condition", "bool"), ("message", "string")) },
+        { "split", new MethodDefinition("split", "string[]", ("s", "string"), ("separator", "string")) },
+        { "read_file_as_text", new MethodDefinition("read_file_as_text", "string", ("path", "string")) },
+        { "write_text_to_file", new MethodDefinition("write_text_to_file", "null", ("path", "string"), ("text", "string")) },
+        { "file_exists", new MethodDefinition("file_exists", "bool", ("path", "string")) },
+        { "delete_file", new MethodDefinition("delete_file", "null", ("path", "string")) },
+        { "get_files", new MethodDefinition("get_files", "string[]", ("path", "string")) },
+        { "get_directories", new MethodDefinition("get_directories", "string[]", ("path", "string")) },
+        { "create_directory", new MethodDefinition("create_directory", "null", ("path", "string")) },
+        { "delete_directory", new MethodDefinition("delete_directory", "null", ("path", "string")) },
+        { "directory_exists", new MethodDefinition("directory_exists", "bool", ("path", "string")) },
+        { "get_current_directory", new MethodDefinition("get_current_directory", "string") },
+        { "set_current_directory", new MethodDefinition("set_current_directory", "null", ("path", "string")) },
+        { "get_full_path", new MethodDefinition("get_full_path", "string", ("path", "string")) },
+        { "load_lib", new MethodDefinition("load_lib", "null", ("lib", "string")) },
+        { "get_var", new MethodDefinition("get_var", "any", ("name", "string")) }
     };
 }

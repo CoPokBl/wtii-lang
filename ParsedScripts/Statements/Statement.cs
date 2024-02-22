@@ -15,5 +15,6 @@ public enum StatementType {
     EnterScope,
     ExitScope,
     Throw,
-    TryCatch
+    TryCatch,
+    LoadLib
 }

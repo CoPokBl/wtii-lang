@@ -1,9 +1,9 @@
 using WhatTimeIsIt.ParsedScripts.Values;
 
-namespace WhatTimeIsIt.ParsedScripts;
+namespace WhatTimeIsIt;
 
 public class ScriptException : Exception {
-    public Value ExceptionObject;
+    public readonly Value ExceptionObject;
     
     public ScriptException(Value exceptionObject) {
         ExceptionObject = exceptionObject;

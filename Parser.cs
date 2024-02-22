@@ -1,4 +1,6 @@
+using System.Reflection;
 using Newtonsoft.Json;
+using WhatTimeIsIt.Builtins;
 using WhatTimeIsIt.ParsedScripts;
 using WhatTimeIsIt.ParsedScripts.Statements;
 using WhatTimeIsIt.ParsedScripts.Values;
@@ -73,10 +75,19 @@ public static class Parser {
             }
         }
 
+        lastSymbol = parts[^1];
+        
+        if (lastVar is MethodCall mc) {  // Get the return type because it's a reference
+            string classType = mc.ObjectType;
+            if (!CurrentScope.Classes.TryGetValue(classType, out ClassDefinition? classDef)) {
+                throw new Exception("Unknown class: " + classType + ".");
+            }
+            return new ClassInstance(classDef);
+        }
+        
         if (lastVar is not ClassInstance cI) {
             throw new Exception("lastVar is null or not class.");
         }
-        lastSymbol = parts[^1];
         return cI;
     }
     
@@ -214,6 +225,11 @@ public static class Parser {
             
         }
 
+        if (CurrentScope.Classes.ContainsKey(value)) {  // We have a class reference
+            type = "class";
+            return new Constant(value, "class");
+        }
+        
         if (value is "true" or "false") {
             type = "bool";
             return new Constant(value, "bool");
@@ -463,6 +479,63 @@ public static class Parser {
         string[] lines = SplitCode(code);
         return Parse(lines);
     }
+    
+    public static void LoadLibrary(string path) {
+        if (!File.Exists(path) && !BuiltIns.Libraries.ContainsKey(path)) {
+            throw new Exception("Library file does not exist: " + path);
+        }
+        
+        string fileExtension = Path.GetExtension(path);
+        List<IWtiiLibrary> libraries = new();
+        switch (fileExtension) {
+            case "wtii": {
+                ParsedScript script = Parse(File.ReadAllText(path));
+                foreach (ClassDefinition cd in script.Classes) {
+                    CurrentScope.Classes[cd.Name] = cd;
+                }
+                foreach (Statement statement in script.Statements) {
+                    if (statement is not MethodDefinition method) {
+                        continue;
+                    }
+                    CurrentScope.Functions[method.Name] = method;
+                }
+                break;
+            }
+
+            case "dll": {
+                Assembly assembly = Assembly.LoadFrom(path);
+                foreach (Type type in assembly.GetTypes()) {
+                    if (!typeof(IWtiiLibrary).IsAssignableFrom(type)) {
+                        continue;
+                    }
+
+                    IWtiiLibrary library = (IWtiiLibrary) Activator.CreateInstance(type)!;
+                    libraries.Add(library);
+                }
+
+                break;
+            }
+
+            case "": {
+                if (!BuiltIns.Libraries.ContainsKey(path)) {
+                    throw new Exception("Library file type not supported: " + fileExtension);
+                }
+
+                Type libraryType = BuiltIns.Libraries[path];
+                IWtiiLibrary library = (IWtiiLibrary) Activator.CreateInstance(libraryType)!;
+                libraries.Add(library);
+                break;
+            }
+
+            default:
+                throw new Exception("Library file type not supported: " + fileExtension);
+        }
+
+        foreach (IWtiiLibrary library in libraries) {
+            library.Init();
+            CurrentScope.AppendScope(library.Scope);
+        }
+    }
 
     /// <summary>
     /// Parses a script into a ParsedScript object.
@@ -595,7 +668,7 @@ public static class Parser {
                         }
                         
                         
-                        // Return and use
+                        // All space based keyword statements
                         case ' ': {
                             if (token == "return") {
                                 string value = l[7..];
@@ -616,15 +689,9 @@ public static class Parser {
                                 if (fileName is not Constant constFileName) {
                                     throw new Exception("use() argument must be a constant.");
                                 }
-                                string fileContents = File.ReadAllText(constFileName.Value);
-                                string[] newLines = SplitCode(fileContents);
                                 
-                                // Add the new lines to after the current line
-                                List<string> newLinesList = new();
-                                newLinesList.AddRange(lines[..(statement + 1)]);
-                                newLinesList.AddRange(newLines);
-                                newLinesList.AddRange(lines[(statement + 1)..]);
-                                lines = newLinesList.ToArray();
+                                LoadLibrary(constFileName.Value);
+                                statements.Add(new LoadLibStatement(constFileName.Value));
                                 handled = true;
                             }
                             
@@ -762,9 +829,9 @@ public static class Parser {
             // Something failed
             // Dump debug info
             string debugInfo = "";
-            debugInfo += "Statements: " + JsonConvert.SerializeObject(statements, Formatting.Indented);
-            debugInfo += "\nClasses: " + JsonConvert.SerializeObject(classes, Formatting.Indented);
-            debugInfo += "\nScope: " + JsonConvert.SerializeObject(CurrentScope, Formatting.Indented);
+            //debugInfo += "Statements: " + JsonConvert.SerializeObject(statements, Formatting.Indented);
+            //debugInfo += "\nClasses: " + JsonConvert.SerializeObject(classes, Formatting.Indented);
+            //debugInfo += "\nScope: " + JsonConvert.SerializeObject(CurrentScope, Formatting.Indented);
             Console.WriteLine(debugInfo);
             throw;
         }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using Newtonsoft.Json;
 using WhatTimeIsIt.Builtins;
 using WhatTimeIsIt.ParsedScripts;
@@ -28,7 +29,7 @@ public static class Interpreter {
     /// Gets the currently loaded scope which will
     /// include all variables and functions from the current scope and all parent scopes.
     /// </summary>
-    private static Scope CurrentScope => _scopes.Peek();
+    public static Scope CurrentScope => _scopes.Peek();
     
     /// <summary>
     /// Creates a new scope and pushes it to the stack.
@@ -36,7 +37,7 @@ public static class Interpreter {
     /// </summary>
     private static void NewScope() {
         _scopes.Push(new Scope(CurrentScope));
-        Debug($"==== NEW SCOPE ==== ({Utils.GetFileAndLine(2)})");
+        if (DebugLogging) Debug($"==== NEW SCOPE ==== ({Utils.GetFileAndLine(2)})");
     }
     
     /// <summary>
@@ -50,7 +51,7 @@ public static class Interpreter {
             if (!CurrentScope.Variables.ContainsKey(kvp.Key)) continue;
             CurrentScope.Variables[kvp.Key] = kvp.Value;
         }
-        Debug($"==== END SCOPE ==== ({Utils.GetFileAndLine(2)})");
+        if (DebugLogging) Debug($"==== END SCOPE ==== ({Utils.GetFileAndLine(2)})");
     }
     
     /// <summary>
@@ -75,6 +76,70 @@ public static class Interpreter {
     /// </summary>
     private static void PrintStackTrace() {
         new StackTrace().Print();
+    }
+    
+    /// <summary>
+    /// Loads a set of classes into the current scope.
+    /// </summary>
+    /// <param name="classes">The classes to load.</param>
+    public static void LoadClasses(params ClassDefinition[] classes) {
+        foreach (ClassDefinition cl in classes) {
+            CurrentScope.Classes[cl.Name] = cl;
+        }
+    }
+
+    public static void LoadLibrary(string path) {
+        if (!File.Exists(path) && !BuiltIns.Libraries.ContainsKey(path)) {
+            throw Error("Library file does not exist: " + path);
+        }
+        
+        string fileExtension = Path.GetExtension(path);
+        List<IWtiiLibrary> libraries = new();
+        switch (fileExtension) {
+            case "wtii": {
+                ParsedScript script = Parser.Parse(File.ReadAllText(path));
+                LoadClasses(script.Classes);
+                MethodDefinition method = new("main", "int") {
+                    Statements = script.Statements
+                };
+                ExecuteFunction(method);
+                break;
+            }
+
+            case "dll": {
+                Assembly assembly = Assembly.LoadFrom(path);
+                foreach (Type type in assembly.GetTypes()) {
+                    if (!typeof(IWtiiLibrary).IsAssignableFrom(type)) {
+                        continue;
+                    }
+
+                    IWtiiLibrary library = (IWtiiLibrary) Activator.CreateInstance(type)!;
+                    libraries.Add(library);
+                }
+
+                break;
+            }
+
+            case "": {
+                if (!BuiltIns.Libraries.ContainsKey(path)) {
+                    throw Error("Library file type not supported: " + fileExtension);
+                }
+
+                Type libraryType = BuiltIns.Libraries[path];
+                IWtiiLibrary library = (IWtiiLibrary) Activator.CreateInstance(libraryType)!;
+                libraries.Add(library);
+                break;
+            }
+
+            default:
+                throw Error("Library file type not supported: " + fileExtension);
+        }
+
+        foreach (IWtiiLibrary library in libraries) {
+            library.Init();
+            CurrentScope.AppendScope(library.Scope);
+            library.Run();
+        }
     }
 
     /// <summary>
@@ -568,6 +633,11 @@ public static class Interpreter {
                     
                     case ExitScopeStatement: {
                         EndScope();
+                        break;
+                    }
+                    
+                    case LoadLibStatement loadLib: {
+                        LoadLibrary(loadLib.Lib);
                         break;
                     }
                     

@@ -1,4 +1,7 @@
 using System.Globalization;
+using System.Reflection;
+using WhatTimeIsIt.ParsedScripts;
+using WhatTimeIsIt.ParsedScripts.Statements;
 using WhatTimeIsIt.ParsedScripts.Values;
 
 namespace WhatTimeIsIt.Builtins.Functions; 
@@ -100,6 +103,45 @@ public static class Standard {
         ArrayValue array = (ArrayValue) args[0];
         int index = int.Parse(args[1].ToString()!);
         return array.Values[index];
+    }
+
+    public static Value Assert(Value[] args) {
+        RealReference condition = Interpreter.ResolveValue(args[0]);
+        if (((Constant) condition).Value == "false") {
+            throw Interpreter.Error(args.Length > 1 ? args[1].ToString()! : "Assertion failed.");
+        }
+        return Constant.Null;
+    }
+    
+    public static Value Split(Value[] args) {
+        RealReference reference = Interpreter.ResolveValue(args[0]);
+        if (reference is not Constant constant) {
+            throw Interpreter.Error("split() argument must be a constant.");
+        }
+        string[] split = constant.Value.Split(args[1].ToString()![0]);
+        return new ArrayValue("string", split.Select(s => new Constant(s, "string")).Cast<Value>().ToArray());
+    }
+    
+    public static Value LoadLib(Value[] args) {
+        RealReference reference = Interpreter.ResolveValue(args[0]);
+        if (reference is not Constant constant) {
+            throw Interpreter.Error("load_lib() argument must be a constant.");
+        }
+        string path = constant.Value;
+
+        Interpreter.LoadLibrary(path);
+        return Constant.Null;
+    }
+    
+    public static Value GetVar(Value[] args) {
+        RealReference reference = Interpreter.ResolveValue(args[0]);
+        if (reference is not Constant constant) {
+            throw Interpreter.Error("get_var() argument must be a constant.");
+        }
+        if (!Interpreter.CurrentScope.Variables.ContainsKey(constant.Value)) {
+            throw Interpreter.Error("Variable does not exist: " + constant.Value);
+        }
+        return Interpreter.CurrentScope.Variables[constant.Value];
     }
     
 }

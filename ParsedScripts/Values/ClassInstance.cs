@@ -3,7 +3,7 @@ using WhatTimeIsIt.ParsedScripts.Statements;
 namespace WhatTimeIsIt.ParsedScripts.Values;
 
 public class ClassInstance : RealReference {
-    public readonly Dictionary<string, Value> Properties = new();
+    public Dictionary<string, Value> Properties = new();
     public readonly Dictionary<string, MethodDefinition> Methods = new();
     
     public ClassInstance(ClassDefinition def) {
