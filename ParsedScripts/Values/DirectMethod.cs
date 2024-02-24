@@ -3,6 +3,7 @@ using WhatTimeIsIt.ParsedScripts.Statements;
 namespace WhatTimeIsIt.ParsedScripts.Values;
 
 public class DirectMethod : Value {
+    public new ValueType Type = ValueType.DirectMethod;
     public readonly MethodDefinition Method;
     public readonly Value[] Arguments;
     

@@ -837,10 +837,15 @@ public static class Parser {
         }
         
 
-        return new ParsedScript {
+        ParsedScript script = new() {
             Statements = statements.ToArray(),
             Classes = classes.ToArray()
         };
+        
+        // It has now been 'compiled' so that it can be saved and loaded
+        File.WriteAllText("script_parsed.json", JsonConvert.SerializeObject(script, Formatting.Indented));
+
+        return script;
     }
     
     /// <summary>

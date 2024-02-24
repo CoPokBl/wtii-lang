@@ -10,13 +10,7 @@ public class MethodDefinition : Statement {
     public string[] ArgumentTypes = null!;
     public Statement[] Statements = null!;
     public Func<Value[], Value>? CsFunc = null;
-    
-    public ParsedScript ToScript() {
-        return new ParsedScript {
-            Statements = Statements
-        };
-    }
-    
+
     public MethodDefinition() { }
     
     public MethodDefinition(string name, string returnType, params (string, string)[] args) {

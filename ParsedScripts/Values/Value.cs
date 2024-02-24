@@ -8,5 +8,8 @@ public abstract class Value {
 public enum ValueType {
     Constant,
     Variable,
-    MethodCall
+    MethodCall,
+    ArrayValue,
+    ClassInstance,
+    DirectMethod
 }
