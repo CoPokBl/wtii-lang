@@ -54,21 +54,21 @@ public static class Parser {
         }
         
         // For each part except the last part
-        Value? lastVar = null;
+        (string, Value)? lastVar = null;
         for (int i = 0; i < parts.Length - 1; i++) {
             string part = parts[i];
             string requiredNextVariableName = parts[i + 1];
-            if (lastVar != null && lastVar is not ClassInstance) {
+            if (lastVar != null && lastVar.Value.Item2 is not ClassInstance) {
                 throw new Exception("lastVar is not a class instance.");
             }
-            ClassInstance? classInstance = lastVar as ClassInstance;
-            Dictionary<string, Value> vars = lastVar == null ? CurrentScope.Variables : classInstance!.Properties;
-            if (!vars.TryGetValue(part, out Value? var)) {
+            ClassInstance? classInstance = lastVar?.Item2 as ClassInstance;
+            Dictionary<string, (string, Value)> vars = lastVar == null ? CurrentScope.Variables : classInstance!.Properties;
+            if (!vars.TryGetValue(part, out (string, Value) var)) {
                 throw new Exception("Unknown variable:" + part + ".");
             }
             lastVar = var;
-            if (!CurrentScope.Classes.TryGetValue(var.ObjectType, out ClassDefinition? classDef)) {
-                throw new Exception("Unknown class: " + var.ObjectType + ".");
+            if (!CurrentScope.Classes.TryGetValue(var.Item1, out ClassDefinition? classDef)) {
+                throw new Exception("Unknown class: " + var.Item1 + ".");
             }
             if (classDef.Variables.All(v => v.Name != requiredNextVariableName) && classDef.Methods.All(v => v.Name != requiredNextVariableName)) {
                 throw new Exception("Unknown variable: " + varName + ".");
@@ -77,15 +77,15 @@ public static class Parser {
 
         lastSymbol = parts[^1];
         
-        if (lastVar is MethodCall mc) {  // Get the return type because it's a reference
-            string classType = mc.ObjectType;
+        if (lastVar?.Item2 is MethodCall mc) {  // Get the return type because it's a reference
+            string classType = lastVar.Value.Item1;
             if (!CurrentScope.Classes.TryGetValue(classType, out ClassDefinition? classDef)) {
                 throw new Exception("Unknown class: " + classType + ".");
             }
             return new ClassInstance(classDef);
         }
         
-        if (lastVar is not ClassInstance cI) {
+        if (lastVar?.Item2 is not ClassInstance cI) {
             throw new Exception("lastVar is null or not class.");
         }
         return cI;
@@ -105,16 +105,16 @@ public static class Parser {
             if (!CurrentScope.Variables.ContainsKey(value)) {
                 throw new Exception("Unknown variable:" + value + ".");
             }
-            type = CurrentScope.Variables[value].ObjectType;
+            type = CurrentScope.Variables[value].Item1;
             return new Variable(parts, type);
         }
         
-        if (!finalInstance.Properties.TryGetValue(finalPart, out Value? finalValue)) {
+        if (!finalInstance.Properties.TryGetValue(finalPart, out (string, Value) finalVar)) {
             throw new Exception("Unknown variable:" + finalPart + ".");
         }
         
         // Every check passed
-        type = finalValue.ObjectType;
+        type = finalVar.Item1;
         return new Variable(parts, type);
     }
     
@@ -392,12 +392,12 @@ public static class Parser {
                             
                             // Add the arguments to the scope
                             foreach ((string? argName, string? argType) in argTypes) {
-                                CurrentScope.Variables[argName] = new Constant("NULL", argType);
+                                CurrentScope.Variables[argName] = ("NULL", new Constant("NULL", argType));
                             }
                             
                             // Add class variables and method to scope
                             foreach (VariableInit variable in variables) {
-                                CurrentScope.Variables[variable.Name] = variable.ToValue();
+                                CurrentScope.Variables[variable.Name] = (variable.VariableType, variable.ToValue());
                             }
                             foreach (MethodDefinition method in methods) {
                                 CurrentScope.Functions[method.Name] = method;
@@ -440,7 +440,7 @@ public static class Parser {
                                 VariableType = type
                             };
                             variables.Add(init);
-                            CurrentScope.Variables[varName] = init.Value;
+                            CurrentScope.Variables[varName] = (init.VariableType, init.Value);
                             handled = true;
                         }
 
@@ -587,7 +587,7 @@ public static class Parser {
                                 
                                 // Add the arguments to the scope
                                 foreach ((string? argName, string? argType) in argTypes) {
-                                    CurrentScope.Variables[argName] = new Constant("NULL", argType);
+                                    CurrentScope.Variables[argName] = ("NULL", new Constant("NULL", argType));
                                 }
                                 
                                 MethodDefinition def = new() {
@@ -645,7 +645,7 @@ public static class Parser {
                                     VariableType = type
                                 };
                                 statements.Add(init);
-                                CurrentScope.Variables[name] = init.Value;
+                                CurrentScope.Variables[name] = (type, init.Value);
                                 handled = true;
                                 break;
                             }
@@ -802,7 +802,7 @@ public static class Parser {
                             string exceptionName = lines[finishPoint+1].Trim()[lines[finishPoint+1].IndexOf('(')..^1].Trim();
                             string[] catchBodyLines = GetBody(lines, finishPoint+1, out finishPoint);
                             NewScope();
-                            CurrentScope.Variables[exceptionName] = Constant.Null;
+                            CurrentScope.Variables[exceptionName] = ("NULL", Constant.Null);
                             tryStatement.CatchStatements = Parse(catchBodyLines, false).Statements;
                             EndScope();
                             tryStatement.ExceptionName = exceptionName;

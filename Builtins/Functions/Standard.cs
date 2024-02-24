@@ -141,7 +141,7 @@ public static class Standard {
         if (!Interpreter.CurrentScope.Variables.ContainsKey(constant.Value)) {
             throw Interpreter.Error("Variable does not exist: " + constant.Value);
         }
-        return Interpreter.CurrentScope.Variables[constant.Value];
+        return Interpreter.CurrentScope.Variables[constant.Value].Item2;
     }
     
 }

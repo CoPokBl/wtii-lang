@@ -47,7 +47,7 @@ public static class Interpreter {
         Scope oldScope = _scopes.Pop();
         
         // If any of the variables exist in the higher level scope, update them
-        foreach (KeyValuePair<string, Value> kvp in oldScope.Variables) {
+        foreach (KeyValuePair<string, (string, Value)> kvp in oldScope.Variables) {
             if (!CurrentScope.Variables.ContainsKey(kvp.Key)) continue;
             CurrentScope.Variables[kvp.Key] = kvp.Value;
         }
@@ -234,22 +234,22 @@ public static class Interpreter {
     /// <exception cref="ScriptException">Thrown when the variable is not a class instance or when an infinite loop is detected.</exception>
     public static RealReference EvalVariable(Variable variable) {
         if (variable.Path.Length == 1) {
-            return ResolveValue(CurrentScope.Variables.GetValueOrDefault(variable.Path[0], Null));
+            return ResolveValue(CurrentScope.Variables.GetValueOrDefault(variable.Path[0], ("NULL", Null)).Item2);
         }
 
         ClassInstance? currentHop = null;
         for (int i = 0; i < variable.Path.Length - 1; i++) {
             string currentToken = variable.Path[i];
             Debug("Current token (hop token): " + currentToken + ".");
-            Dictionary<string, Value> properties = currentHop == null ? CurrentScope.Variables : currentHop.Properties;
-            Value val = properties.GetValueOrDefault(currentToken, Null);
+            Dictionary<string, (string, Value)> properties = currentHop == null ? CurrentScope.Variables : currentHop.Properties;
+            Value val = properties.GetValueOrDefault(currentToken, ("NULL", Null)).Item2;
             if (val is not ClassInstance classInstance) {
                 throw Error("Variable " + currentToken + " is not a class instance.");
             }
             currentHop = classInstance;
         }
         Debug("Current token (final token): " + variable.Path[^1] + ".");
-        Value solvedValue = currentHop!.Properties.GetValueOrDefault(variable.Path[^1], Null);
+        Value solvedValue = currentHop!.Properties.GetValueOrDefault(variable.Path[^1], ("NULL", Null)).Item2;
         if (solvedValue is Variable) {
             throw Error("Variable " + variable.Path[^1] + " is a variable. INFINITE LOOP DETECTED.");
         }
@@ -267,21 +267,23 @@ public static class Interpreter {
             if (!CurrentScope.Variables.ContainsKey(path[0])) {
                 throw Error("Variable '" + path[0] + "' does not exist in this scope.");
             }
-            CurrentScope.Variables[path[0]] = newValue;
+            // Assign the variable a value while preserving the type
+            CurrentScope.Variables[path[0]] = (CurrentScope.Variables[path[0]].Item1, newValue);
             return;
         }
 
         ClassInstance? currentHop = null;
         for (int i = 0; i < path.Length - 1; i++) {
             string currentToken = path[i];
-            Dictionary<string, Value> properties = currentHop == null ? CurrentScope.Variables : currentHop.Properties;
-            Value val = properties.GetValueOrDefault(currentToken, Null);
+            Dictionary<string, (string, Value)> properties = currentHop == null ? CurrentScope.Variables : currentHop.Properties;
+            Value val = properties.GetValueOrDefault(currentToken, ("NULL", Null)).Item2;
             if (val is not ClassInstance classInstance) {
                 throw Error("Variable " + currentToken + " is not a class instance.");
             }
             currentHop = classInstance;
         }
-        currentHop!.Properties[path[^1]] = newValue;
+        // Assign the variable a value while preserving the type
+        currentHop!.Properties[path[^1]] = (currentHop.Properties[path[^1]].Item1, newValue);
     }
     
     /// <summary>
@@ -299,8 +301,8 @@ public static class Interpreter {
         ClassInstance? currentHop = null;
         for (int i = 0; i < call.Path.Length - 1; i++) {
             string currentToken = call.Path[i];
-            Dictionary<string, Value> properties = currentHop == null ? CurrentScope.Variables : currentHop.Properties;
-            Value val = properties.GetValueOrDefault(currentToken, Null);
+            Dictionary<string, (string, Value)> properties = currentHop == null ? CurrentScope.Variables : currentHop.Properties;
+            Value val = properties.GetValueOrDefault(currentToken, ("NULL", Null)).Item2;
             if (val is not ClassInstance classInstance) {
                 throw Error("Variable " + currentToken + " is not a class instance.");
             }
@@ -348,7 +350,7 @@ public static class Interpreter {
         NewScope();
         if (parentClass != null) {
             // Add its variables and methods to the scope
-            foreach (KeyValuePair<string, Value> kvp in parentClass.Properties) {
+            foreach (KeyValuePair<string, (string, Value)> kvp in parentClass.Properties) {
                 CurrentScope.Variables[kvp.Key] = kvp.Value;
             }
             foreach (KeyValuePair<string, MethodDefinition> kvp in parentClass.Methods) {
@@ -361,7 +363,7 @@ public static class Interpreter {
         // Check for changed variables
         if (parentClass != null) {
             Debug("Checking for changed variables in class...");
-            foreach (KeyValuePair<string, Value> kvp in parentClass.Properties) {
+            foreach (KeyValuePair<string, (string, Value)> kvp in parentClass.Properties) {
                 if (CurrentScope.Variables[kvp.Key] == parentClass.Properties[kvp.Key]) continue;
                 parentClass.Properties[kvp.Key] = CurrentScope.Variables[kvp.Key.Debug("Changed var:")].Debug("To Value:");
             }
@@ -404,7 +406,7 @@ public static class Interpreter {
                 throw Error("Argument type mismatch in function call: " + callName + ". Expected " + argumentType + " but got " + args[i].ObjectType + ".");
             }
             string arg = method.Arguments[i];
-            CurrentScope.Variables[arg] = ResolveValue(args[i], argumentType);
+            CurrentScope.SetVariable(arg, ResolveValue(args[i], argumentType));
         }
 
         Value result = method.CsFunc != null ? method.CsFunc.Invoke(args) : ExecuteFunction(method);
@@ -504,7 +506,7 @@ public static class Interpreter {
                                 throw;
                             }
                             NewScope();
-                            CurrentScope.Variables[tryCatchStatement.ExceptionName] = e.ExceptionObject;
+                            CurrentScope.Variables[tryCatchStatement.ExceptionName] = (e.ExceptionObject.ObjectType, e.ExceptionObject);
                             Value retVal = ExecuteFunction(new MethodDefinition {
                                 Name = "catch",
                                 Arguments = new[] {"catch"},
@@ -530,7 +532,7 @@ public static class Interpreter {
                             // Wrong type
                             throw Error("Variable " + init.Name + " is of type " + expectedType + " but tried to set it to " + val.ObjectType);
                         }
-                        CurrentScope.Variables[init.Name] = val;
+                        CurrentScope.SetVariable(init.Name, val);
                         Debug("Set variable " + init.Name + " to " + val);
                         break;
                     }

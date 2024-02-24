@@ -38,7 +38,7 @@ public class Http : IWtiiLibrary {
             ("headers", "string")) {
             CsFunc = HttpRequest
         });
-        Scope.Variables.Add("http", new Constant("HTTP Exists!", "string"));
+        Scope.SetVariable("http", new Constant("HTTP Exists!", "string"));
     }
     
     public void Init() { }
@@ -62,9 +62,9 @@ public class Http : IWtiiLibrary {
 
         ClassInstance responseInstance = new(HttpResponseClass) {
             Properties = {
-                ["status"] = new Constant(((int) response.StatusCode).ToString(), "int"),
-                ["body"] = new Constant(responseString, "string"),
-                ["headers"] = new Constant(response.Headers.ToString(), "string")
+                ["status"] = ("int", new Constant(((int) response.StatusCode).ToString(), "int")),
+                ["body"] = ("string", new Constant(responseString, "string")),
+                ["headers"] = ("string", new Constant(response.Headers.ToString(), "string"))
             }
         };
         return responseInstance;

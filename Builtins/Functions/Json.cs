@@ -10,20 +10,20 @@ public static class Json {
     
     public static Value ToJson(Value[] args) {
         RealReference ar = Interpreter.ResolveValue(args[0]);
-        Dictionary<string, Value> properties;
+        Dictionary<string, (string, Value)> properties;
         if (ar is ClassInstance instance) {
             properties = instance.Properties;
         }
         else {
             // Constant
-            properties = new Dictionary<string, Value> {
-                {"value", ar}
+            properties = new Dictionary<string, (string, Value)> {
+                {"value", (ar.ObjectType, ar)}
             };
         }
         
         Dictionary<string, RealReference> realReferenceList = new();
-        foreach (KeyValuePair<string, Value> kvp in properties) {
-            RealReference rr = Interpreter.ResolveValue(kvp.Value);
+        foreach (KeyValuePair<string, (string, Value)> kvp in properties) {
+            RealReference rr = Interpreter.ResolveValue(kvp.Value.Item2);
             realReferenceList.Add(kvp.Key, rr);
         }
 
@@ -55,8 +55,8 @@ public static class Json {
             }
             else if (value is ClassInstance classInstance) {
                 JObject subObj = new();
-                foreach (KeyValuePair<string, Value> prop in classInstance.Properties) {
-                    Value val = Interpreter.ResolveValue(prop.Value);
+                foreach (KeyValuePair<string, (string, Value)> prop in classInstance.Properties) {
+                    Value val = Interpreter.ResolveValue(prop.Value.Item2);
                     Constant subConstant = Constant.FromString(val.ToString()!);
                     // recursively call the method for type safety
                     Dictionary<string, RealReference> subDict = new() { { prop.Key, subConstant } };
@@ -82,7 +82,7 @@ public static class Json {
         }
         
         JObject jObject = JObject.Parse(json);
-        Dictionary<string, Value> properties = new();
+        Dictionary<string, (string, Value)> properties = new();
         foreach (KeyValuePair<string, JToken> kvp in jObject) {
             Value value = kvp.Value.Type switch {
                 JTokenType.Boolean => new Constant(kvp.Value.Value<bool>().ToString(), "bool"),
@@ -96,12 +96,10 @@ public static class Json {
                 }),
                 _ => throw Interpreter.Error("Unknown type in JSON object.")
             };
-            properties.Add(kvp.Key, value);
+            properties.Add(kvp.Key, (value.ObjectType, value));
         }
 
-        ClassInstance instance = new(resultType) {
-            Properties = properties
-        };
+        ClassInstance instance = new(resultType, properties);
         return instance;
     }
     
