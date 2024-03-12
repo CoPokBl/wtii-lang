@@ -244,6 +244,10 @@ public static class Interpreter {
             return ResolveValue(CurrentScope.Variables.GetValueOrDefault(variable.Path[0], ("NULL", Null)).Item2);
         }
 
+        if (variable.Path.Length == 0) {
+            throw Error("Variable path is empty.");
+        }
+
         ClassInstance? currentHop = null;
         for (int i = 0; i < variable.Path.Length - 1; i++) {
             string currentToken = variable.Path[i];
