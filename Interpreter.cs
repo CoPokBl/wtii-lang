@@ -56,6 +56,8 @@ public static class Interpreter {
     
     /// <summary>
     /// Print a debug message if debug logging is enabled.
+    /// You should still check DebugLogging before calling this function
+    /// if the message would require getting information from expensive functions.
     /// </summary>
     /// <param name="s">The message to print.</param>
     public static void Debug(string s) {
@@ -88,6 +90,11 @@ public static class Interpreter {
         }
     }
 
+    /// <summary>
+    /// Dynamically loads a library from a file or from the built-in libraries.
+    /// </summary>
+    /// <param name="path">The library file or name of builtin library.</param>
+    /// <exception cref="ScriptException">Thrown when library either does not exist or is not supported.</exception>
     public static void LoadLibrary(string path) {
         if (!File.Exists(path) && !BuiltIns.Libraries.ContainsKey(path)) {
             throw Error("Library file does not exist: " + path);

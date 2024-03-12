@@ -45,3 +45,7 @@ void main()
 or start of file
 
 in that priority order
+
+TODO:
+- Async
+- Better errors
