@@ -8,10 +8,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <None Update="test.wtii">
+      <None Update="test-big.wtii">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="lib.wtii">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="test.wtii">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>
