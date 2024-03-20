@@ -47,7 +47,8 @@ public static class BuiltIns {
         { "set_current_directory", Files.SetCurrentDirectory },
         { "get_full_path", Files.GetFullPath },
         { "load_lib", Standard.LoadLib },
-        { "get_var", Standard.GetVar }
+        { "get_var", Standard.GetVar },
+        { "get_runtime", Standard.GetRuntime }
     };
     
     public static readonly Dictionary<string, MethodDefinition> MethodDefinitions = new() {
@@ -86,6 +87,7 @@ public static class BuiltIns {
         { "set_current_directory", new MethodDefinition("set_current_directory", "null", ("path", "string")) },
         { "get_full_path", new MethodDefinition("get_full_path", "string", ("path", "string")) },
         { "load_lib", new MethodDefinition("load_lib", "null", ("lib", "string")) },
-        { "get_var", new MethodDefinition("get_var", "any", ("name", "string")) }
+        { "get_var", new MethodDefinition("get_var", "any", ("name", "string")) },
+        { "get_runtime", new MethodDefinition("get_runtime", "string") }
     };
 }

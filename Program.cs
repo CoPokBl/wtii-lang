@@ -27,6 +27,11 @@ if (!File.Exists(file)) {
 
 string code = File.ReadAllText(file);
 ParsedScript script = Parser.Parse(code);
-int exitCode = script.Run();
 
+if (File.Exists("libwtiiint.so")) {  // Run with C++ for speed if available
+    return CppInterpreter.interpret("parsed_script.json");
+}
+
+// Run with C# interpreter
+int exitCode = script.Run();
 return exitCode;

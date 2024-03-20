@@ -141,4 +141,8 @@ public static class Standard {
         return Interpreter.CurrentScope.Variables[constant.Value].Item2;
     }
     
+    public static Value GetRuntime(Value[] args) {
+        return new Constant("Wtii-dotnet", "string");
+    }
+    
 }
