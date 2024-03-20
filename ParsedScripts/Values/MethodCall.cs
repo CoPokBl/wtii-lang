@@ -19,10 +19,10 @@ public class MethodCall : Value {
             Arguments = Arguments
         };
     }
-
-    public static MethodCall Not(MethodCall call) {
+    
+    public static MethodCall Not(Value value) {
         return new MethodCall("not".SingleEnumerate(), new Value[] {
-            call
+            value
         }, "bool");
     }
 

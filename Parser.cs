@@ -5,9 +5,13 @@ using WhatTimeIsIt.ParsedScripts;
 using WhatTimeIsIt.ParsedScripts.Statements;
 using WhatTimeIsIt.ParsedScripts.Values;
 
-namespace WhatTimeIsIt; 
+namespace WhatTimeIsIt;
 
 public static class Parser {
+
+    private static readonly char[] ReservedCharacters = {
+        '+', '=', '-', '/', '*', ' ', '(', ')', '{', '}', ';', '[', ']', '!', '"'
+    };
     
     /// <summary>
     /// A scope contains all variables and functions that are accessible in the current scope.
@@ -35,6 +39,8 @@ public static class Parser {
     /// Removes the current scope from the stack.
     /// </summary>
     private static void EndScope() => Scopes.Pop();
+    
+    private static string CurrentLine = "";
 
     /// <summary>
     /// Gets the class that the dot notation variable exists in.
@@ -164,6 +170,24 @@ public static class Parser {
             return Constant.Null;
         }
         
+        if (value.Contains('(') && value.Contains(')')) {
+            // To get the method name we need to go backwards from the ( until we hit a reserved character
+            string methodName = "";
+            for (int i = value.IndexOf('(') - 1; i >= 0; i--) {
+                char c = value[i];
+                if (ReservedCharacters.Contains(c)) {
+                    break;
+                }
+                methodName = c + methodName;
+            }
+            
+            ParseDotNotationMethod(methodName, out string[] parts, out type);
+            string argsString = value.Split('(', 2)[1][..^1];
+            string[] args = argsString.Split(',');
+            Value?[] valueArgs = argsString == "" ? Array.Empty<Value>() : args.Select(EvalValue).ToArray();
+            return new MethodCall(parts, valueArgs.Select(v => v ?? new Constant("NULL", "NULL")).ToArray(), type);
+        }
+        
         // Check for operators by going through each character checking if it's an operator and ignoring if it's part of a string
         bool inString = false;
         for (int i = 0; i < value.Length; i++) {
@@ -171,6 +195,11 @@ public static class Parser {
             if (c == '"') {
                 inString = !inString;
             }
+
+            if (inString) {
+                continue;
+            }
+            
             if (!inString && c is '=' or '!' && value[i + 1] == '=') {  // ==
                 bool not = c == '!';
                 string[] parts = value.Split(not ? "!=" : "==", 2);
@@ -188,6 +217,17 @@ public static class Parser {
                 }, "bool");
                 return not ? MethodCall.Not(call) : call;
             }
+
+            if (!inString && c == '!') {  // Not
+                string right = value[(i + 1)..];
+                Value rightValue = EvalValue(right);
+                if (rightValue.ObjectType != "bool") {
+                    throw new Exception("Cannot use not operator on non-boolean value.");
+                }
+                type = "bool";
+                return MethodCall.Not(rightValue);
+            }
+
         }
         
         inString = false;
@@ -283,14 +323,7 @@ public static class Parser {
             return new ArrayValue(type, values);
         }
         
-        if (value.Contains('(') && value.Contains(')')) {
-            string methodName = value.Split('(', 2)[0];
-            ParseDotNotationMethod(methodName, out string[] parts, out type);
-            string argsString = value.Split('(', 2)[1][..^1];
-            string[] args = argsString.Split(',');
-            Value?[] valueArgs = argsString == "" ? Array.Empty<Value>() : args.Select(EvalValue).ToArray();
-            return new MethodCall(parts, valueArgs.Select(v => v ?? new Constant("NULL", "NULL")).ToArray(), type);
-        }
+        // old method check
         
         bool hasArrayIndex = value.Contains('[') && value.EndsWith(']');
         string dotNotationValue = hasArrayIndex ? value.Split('[')[0] : value;
@@ -553,6 +586,7 @@ public static class Parser {
             for (int statement = 0; statement < lines.Length; statement++) {
                 string line = lines[statement];
                 string l = line.Trim();
+                CurrentLine = l;  // For debugging
 
                 if (l == "") {
                     continue;
@@ -828,7 +862,7 @@ public static class Parser {
         catch (Exception e) {
             // Something failed
             // Dump debug info
-            string debugInfo = "";
+            string debugInfo = "Error on line: " + CurrentLine;
             //debugInfo += "Statements: " + JsonConvert.SerializeObject(statements, Formatting.Indented);
             //debugInfo += "\nClasses: " + JsonConvert.SerializeObject(classes, Formatting.Indented);
             //debugInfo += "\nScope: " + JsonConvert.SerializeObject(CurrentScope, Formatting.Indented);
