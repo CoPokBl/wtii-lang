@@ -23,6 +23,12 @@ public static class BuiltIns {
         { "divide", Standard.Divide },
         { "concat", Standard.Concat },
         { "equals", Standard.Equals },
+        { "more_than", Standard.MoreThan },
+        { "less_than", Standard.LessThan },
+        { "more_than_or_equals", Standard.MoreThanOrEquals },
+        { "less_than_or_equals", Standard.LessThanOrEquals },
+        { "and", Standard.And },
+        { "or", Standard.Or },
         { "not", Standard.Not },
         { "to_int", Convert.ToInt },
         { "to_float", Convert.ToFloat },
@@ -48,7 +54,8 @@ public static class BuiltIns {
         { "get_full_path", Files.GetFullPath },
         { "load_lib", Standard.LoadLib },
         { "get_var", Standard.GetVar },
-        { "get_runtime", Standard.GetRuntime }
+        { "get_runtime", Standard.GetRuntime },
+        { "array_append", Standard.ArrayAppend }
     };
     
     public static readonly Dictionary<string, MethodDefinition> MethodDefinitions = new() {
@@ -88,6 +95,13 @@ public static class BuiltIns {
         { "get_full_path", new MethodDefinition("get_full_path", "string", ("path", "string")) },
         { "load_lib", new MethodDefinition("load_lib", "null", ("lib", "string")) },
         { "get_var", new MethodDefinition("get_var", "any", ("name", "string")) },
-        { "get_runtime", new MethodDefinition("get_runtime", "string") }
+        { "get_runtime", new MethodDefinition("get_runtime", "string") },
+        { "more_than", new MethodDefinition("more_than", "bool", ("n1", "float"), ("n2", "float")) },
+        { "less_than", new MethodDefinition("less_than", "bool", ("n1", "float"), ("n2", "float")) },
+        { "more_than_or_equals", new MethodDefinition("more_than_or_equals", "bool", ("n1", "float"), ("n2", "float")) },
+        { "less_than_or_equals", new MethodDefinition("less_than_or_equals", "bool", ("n1", "float"), ("n2", "float")) },
+        { "and", new MethodDefinition("and", "bool", ("b1", "bool"), ("b2", "bool")) },
+        { "or", new MethodDefinition("or", "bool", ("b1", "bool"), ("b2", "bool")) },
+        { "array_append", new MethodDefinition("array_append", "null", ("arr", "any[]"), ("val", "any")) }
     };
 }

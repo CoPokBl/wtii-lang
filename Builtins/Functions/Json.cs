@@ -37,20 +37,29 @@ public static class Json {
         foreach ((string? name, RealReference? value) in realReferenceDict) {
             JToken? valueToken;
             if (value is Constant constVal) {
-                switch (constVal.Value) {
-                    case "true":
-                    case "false":
+                switch (constVal.ObjectType) {
+                    case "bool":  // True or false
                         valueToken = bool.Parse(constVal.Value);
                         break;
+                    
+                    case "string":
+                        valueToken = constVal.Value;
+                        break;
+                    
                     case "null":
                         valueToken = null;
                         break;
-                    default:
-                        if (double.TryParse(constVal.Value, out double numVal))
-                            valueToken = numVal;
-                        else
-                            valueToken = constVal.Value;
+                    
+                    case "int":
+                        valueToken = int.Parse(constVal.Value);
                         break;
+                    
+                    case "float":
+                        valueToken = double.Parse(constVal.Value, CultureInfo.InvariantCulture);
+                        break;
+                    
+                    default:
+                        throw Interpreter.Error($"Unknown type in RealReference dictionary. Type: {constVal.ObjectType}");
                 }
             }
             else if (value is ClassInstance classInstance) {

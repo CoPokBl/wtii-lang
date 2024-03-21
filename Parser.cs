@@ -199,10 +199,21 @@ public static class Parser {
             if (inString) {
                 continue;
             }
-            
-            if (!inString && c is '=' or '!' && value[i + 1] == '=') {  // ==
-                bool not = c == '!';
-                string[] parts = value.Split(not ? "!=" : "==", 2);
+
+            char nc = value.Length-1 <= i ? ' ' : value[i + 1];
+            string? op = null;
+            if (c == '!' && nc == '=') op = "!=";
+            else if (c == '=' && nc == '=') op = "==";
+            else if (c == '<' && nc == '=') op = "<=";
+            else if (c == '>' && nc == '=') op = ">=";
+            else if (c == '|' && nc == '|') op = "||";
+            else if (c == '&' && nc == '&') op = "&&";
+            else if (c == '<') op = "<";
+            else if (c == '>') op = ">";
+
+            // Logical boolean operators
+            if (!inString && op != null) {
+                string[] parts = value.Split(op, 2);
                 string left = parts[0];
                 string right = parts[1];
                 Value leftValue = EvalValue(left);
@@ -211,14 +222,34 @@ public static class Parser {
                     throw new Exception("Cannot compare values of different types. Left: " +
                                         leftValue.ObjectType + ", Right: " + rightValue.ObjectType + ".");
                 }
+
+                string opFunc = op switch {
+                    "==" => "equals",
+                    "!=" => "not_equals",
+                    "<" => "less_than",
+                    "<=" => "less_than_or_equals",
+                    ">" => "more_than",
+                    ">=" => "more_than_or_equals",
+                    "||" => "or",
+                    "&&" => "and",
+                    _ => throw new Exception("Unknown operator: " + op)
+                };
+                
                 type = "bool";
-                MethodCall call = new("equals".SingleEnumerate(), new[] {
+                MethodCall call = new(opFunc.SingleEnumerate(), new[] {
                     leftValue, rightValue
                 }, "bool");
-                return not ? MethodCall.Not(call) : call;
+                
+                // Handle special ops
+                if (op == "!=") {  // Just puts equals through a not
+                    call.Path = "equals".SingleEnumerate();
+                    return MethodCall.Not(call);
+                }
+
+                return call;
             }
 
-            if (!inString && c == '!') {  // Not
+            if (!inString && c == '!') {  // Not is special because it has no 'left' and 'right' side.
                 string right = value[(i + 1)..];
                 Value rightValue = EvalValue(right);
                 if (rightValue.ObjectType != "bool") {
@@ -304,7 +335,7 @@ public static class Parser {
         if (value.StartsWith('[') && value.EndsWith(']')) {
             // Array init
             string[] parts = value[1..^1].SafeSplit(',');
-            parts = parts.Select(s => s.Trim()).ToArray();
+            parts = parts.Select(s => s.Trim()).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
             Value[] values = parts.Select(EvalValue).ToArray();
             string? vType = null;
             if (!values.All(v => {
@@ -323,13 +354,13 @@ public static class Parser {
             return new ArrayValue(type, values);
         }
         
-        // old method check
-        
         bool hasArrayIndex = value.Contains('[') && value.EndsWith(']');
         string dotNotationValue = hasArrayIndex ? value.Split('[')[0] : value;
         Variable var = ParseDotNotationVariable(dotNotationValue, out type);
-        if (!hasArrayIndex) return var;
-        {
+        
+        if (!hasArrayIndex) return var;  // Normal variable, not indexed
+        
+        {  // Navigate array
             string[] parts = value.Split('[');
             string indexString = parts[1][..^1];
             Value index = EvalValue(indexString);
@@ -450,7 +481,7 @@ public static class Parser {
                             handled = true;
                             
                             // Move the statement index to the closing bracket
-                            statement = closingBracket + 1;
+                            statement = closingBracket;
                         }
 
                         break;
@@ -521,7 +552,7 @@ public static class Parser {
         string fileExtension = Path.GetExtension(path);
         List<IWtiiLibrary> libraries = new();
         switch (fileExtension) {
-            case "wtii": {
+            case ".wtii": {
                 ParsedScript script = Parse(File.ReadAllText(path));
                 foreach (ClassDefinition cd in script.Classes) {
                     CurrentScope.Classes[cd.Name] = cd;
@@ -535,7 +566,7 @@ public static class Parser {
                 break;
             }
 
-            case "dll": {
+            case ".dll": {
                 Assembly assembly = Assembly.LoadFrom(path);
                 foreach (Type type in assembly.GetTypes()) {
                     if (!typeof(IWtiiLibrary).IsAssignableFrom(type)) {

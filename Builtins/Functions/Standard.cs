@@ -145,4 +145,67 @@ public static class Standard {
         return new Constant("Wtii-dotnet", "string");
     }
     
+    public static Value MoreThan(Value[] args) {
+        RealReference ar = Interpreter.ResolveValue(args[0]);
+        RealReference br = Interpreter.ResolveValue(args[1]);
+        if (ar is not Constant a || br is not Constant b) {
+            throw Interpreter.Error("more_than() arguments must be constants");
+        }
+        return float.Parse(a.Value) > float.Parse(b.Value) ? Constant.True : Constant.False;
+    }
+    
+    public static Value LessThan(Value[] args) {
+        RealReference ar = Interpreter.ResolveValue(args[0]);
+        RealReference br = Interpreter.ResolveValue(args[1]);
+        if (ar is not Constant a || br is not Constant b) {
+            throw Interpreter.Error("less_than() arguments must be constants");
+        }
+        return float.Parse(a.Value) < float.Parse(b.Value) ? Constant.True : Constant.False;
+    }
+    
+    public static Value MoreThanOrEquals(Value[] args) {
+        RealReference ar = Interpreter.ResolveValue(args[0]);
+        RealReference br = Interpreter.ResolveValue(args[1]);
+        if (ar is not Constant a || br is not Constant b) {
+            throw Interpreter.Error("more_than_or_equals() arguments must be constants");
+        }
+        return float.Parse(a.Value) >= float.Parse(b.Value) ? Constant.True : Constant.False;
+    }
+    
+    public static Value LessThanOrEquals(Value[] args) {
+        RealReference ar = Interpreter.ResolveValue(args[0]);
+        RealReference br = Interpreter.ResolveValue(args[1]);
+        if (ar is not Constant a || br is not Constant b) {
+            throw Interpreter.Error("less_than_or_equals() arguments must be constants");
+        }
+        return float.Parse(a.Value) <= float.Parse(b.Value) ? Constant.True : Constant.False;
+    }
+    
+    public static Value And(Value[] args) {
+        RealReference ar = Interpreter.ResolveValue(args[0]);
+        RealReference br = Interpreter.ResolveValue(args[1]);
+        if (ar is not Constant a || br is not Constant b) {
+            throw Interpreter.Error("and() arguments must be constants");
+        }
+        return a.Value == "true" && b.Value == "true" ? Constant.True : Constant.False;
+    }
+    
+    public static Value Or(Value[] args) {
+        RealReference ar = Interpreter.ResolveValue(args[0]);
+        RealReference br = Interpreter.ResolveValue(args[1]);
+        if (ar is not Constant a || br is not Constant b) {
+            throw Interpreter.Error("or() arguments must be constants");
+        }
+        return a.Value == "true" || b.Value == "true" ? Constant.True : Constant.False;
+    }
+    
+    public static Value ArrayAppend(Value[] args) {
+        RealReference reference = Interpreter.ResolveValue(args[0]);
+        if (reference is not ArrayValue array) {
+            throw Interpreter.Error("array_append() argument must be an array.");
+        }
+        ArrayValue newArray = new(array.ObjectType, array.Values.Concat(args.Skip(1)).ToArray());
+        return newArray;
+    }
+    
 }

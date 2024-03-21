@@ -4,7 +4,7 @@ namespace WhatTimeIsIt.ParsedScripts.Values;
 
 public class MethodCall : Value {
     public new ValueType Type = ValueType.MethodCall;
-    public readonly string[] Path = null!;
+    public string[] Path = null!;
     public Value[] Arguments = null!;
 
     public MethodCall(string[] path, Value[] args, string? objectType = null) {
