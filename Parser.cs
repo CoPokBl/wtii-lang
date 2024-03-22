@@ -12,6 +12,10 @@ public static class Parser {
     private static readonly char[] ReservedCharacters = {
         '+', '=', '-', '/', '*', ' ', '(', ')', '{', '}', ';', '[', ']', '!', '"'
     };
+
+    private static readonly string[] PrimitiveTypes = {
+        "int", "float", "string", "bool", "NULL"
+    };
     
     /// <summary>
     /// A scope contains all variables and functions that are accessible in the current scope.
@@ -296,7 +300,7 @@ public static class Parser {
             
         }
 
-        if (CurrentScope.Classes.ContainsKey(value)) {  // We have a class reference
+        if (CurrentScope.Classes.ContainsKey(value) || PrimitiveTypes.Contains(value)) {  // We have a class reference
             type = "class";
             return new Constant(value, "class");
         }
@@ -456,7 +460,7 @@ public static class Parser {
                             
                             // Add the arguments to the scope
                             foreach ((string? argName, string? argType) in argTypes) {
-                                CurrentScope.Variables[argName] = ("NULL", new Constant("NULL", argType));
+                                CurrentScope.Variables[argName] = (argType, new Constant("NULL", argType));
                             }
                             
                             // Add class variables and method to scope
@@ -652,7 +656,7 @@ public static class Parser {
                                 
                                 // Add the arguments to the scope
                                 foreach ((string? argName, string? argType) in argTypes) {
-                                    CurrentScope.Variables[argName] = ("NULL", new Constant("NULL", argType));
+                                    CurrentScope.Variables[argName] = (argType, new Constant("NULL", argType));
                                 }
                                 
                                 MethodDefinition def = new() {

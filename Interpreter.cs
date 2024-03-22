@@ -103,7 +103,7 @@ public static class Interpreter {
         string fileExtension = Path.GetExtension(path);
         List<IWtiiLibrary> libraries = new();
         switch (fileExtension) {
-            case "wtii": {
+            case ".wtii": {
                 ParsedScript script = Parser.Parse(File.ReadAllText(path));
                 LoadClasses(script.Classes);
                 MethodDefinition method = new("main", "int") {
@@ -113,7 +113,7 @@ public static class Interpreter {
                 break;
             }
 
-            case "dll": {
+            case ".dll": {
                 Assembly assembly = Assembly.LoadFrom(path);
                 foreach (Type type in assembly.GetTypes()) {
                     if (!typeof(IWtiiLibrary).IsAssignableFrom(type)) {
@@ -347,7 +347,7 @@ public static class Interpreter {
                     continue;
                 }
                 if (def.ArgumentTypes[i] != evaledArgs[i].ObjectType) {
-                    throw Error("Argument type mismatch in function call: " + callName + ". Expected " + def.ArgumentTypes[i] + " but got " + call.Arguments[i].ObjectType + ".");
+                    throw Error("Argument type mismatch in function call: " + callName + ". Expected " + def.ArgumentTypes[i] + " but got " + evaledArgs[i].ObjectType + ".");
                 }
             }
             return function.Invoke(evaledArgs);

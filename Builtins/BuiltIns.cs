@@ -55,7 +55,8 @@ public static class BuiltIns {
         { "load_lib", Standard.LoadLib },
         { "get_var", Standard.GetVar },
         { "get_runtime", Standard.GetRuntime },
-        { "array_append", Standard.ArrayAppend }
+        { "array_append", Standard.ArrayAppend },
+        { "empty_array", Standard.EmptyArray }
     };
     
     public static readonly Dictionary<string, MethodDefinition> MethodDefinitions = new() {
@@ -102,6 +103,7 @@ public static class BuiltIns {
         { "less_than_or_equals", new MethodDefinition("less_than_or_equals", "bool", ("n1", "float"), ("n2", "float")) },
         { "and", new MethodDefinition("and", "bool", ("b1", "bool"), ("b2", "bool")) },
         { "or", new MethodDefinition("or", "bool", ("b1", "bool"), ("b2", "bool")) },
-        { "array_append", new MethodDefinition("array_append", "null", ("arr", "any[]"), ("val", "any")) }
+        { "array_append", new MethodDefinition("array_append", "any", ("arr", "any[]"), ("val", "any")) },
+        { "empty_array", new MethodDefinition("empty_array", "any[]", ("type", "class")) }
     };
 }

@@ -204,8 +204,21 @@ public static class Standard {
         if (reference is not ArrayValue array) {
             throw Interpreter.Error("array_append() argument must be an array.");
         }
-        ArrayValue newArray = new(array.ObjectType, array.Values.Concat(args.Skip(1)).ToArray());
+        RealReference addition = Interpreter.ResolveValue(args[1]);
+        if (addition.ObjectType != array.BaseObjectType) {
+            throw Interpreter.Error("New object must be of the same type as the array. Got: " + addition.ObjectType + ", expected: " + array.BaseObjectType);
+        }
+        ArrayValue newArray = new(array.BaseObjectType, array.Values.Append(addition).ToArray());
         return newArray;
+    }
+    
+    public static Value EmptyArray(Value[] args) {
+        RealReference typeRef = Interpreter.ResolveValue(args[0]);
+        if (typeRef is not Constant type || type.ObjectType != "class") {
+            throw Interpreter.Error("empty_array() argument must be a class type constant.");
+        }
+        
+        return new ArrayValue(type.Value, Array.Empty<Value>());
     }
     
 }
