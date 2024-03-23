@@ -229,7 +229,7 @@ public static class Interpreter {
                 return ResolveValue(eval, exceptedType);
             }
             default:
-                return Null;
+                throw Error("Unknown value type: " + value.GetType().Name);
         }
     }
 
@@ -241,7 +241,10 @@ public static class Interpreter {
     /// <exception cref="ScriptException">Thrown when the variable is not a class instance or when an infinite loop is detected.</exception>
     public static RealReference EvalVariable(Variable variable) {
         if (variable.Path.Length == 1) {
-            return ResolveValue(CurrentScope.Variables.GetValueOrDefault(variable.Path[0], ("NULL", Null)).Item2);
+            if (!CurrentScope.Variables.ContainsKey(variable.Path[0])) {
+                throw Error("Variable '" + variable.Path[0] + "' does not exist in this scope.");
+            }
+            return ResolveValue(CurrentScope.Variables[variable.Path[0]].Item2);
         }
 
         if (variable.Path.Length == 0) {
@@ -332,35 +335,41 @@ public static class Interpreter {
     private static Value EvalFunction(FunctionCall call) {
         string callName = call.Path[0];
         
-        if (BuiltIns.Functions.TryGetValue(callName, out Func<Value[], Value>? function)) {
+        NewScope();
+
+        Func<Value[], Value>? function;
+        ClassInstance? parentClass = null;
+        MethodDefinition? method;
+        if (BuiltIns.Functions.TryGetValue(callName, out function)) {
             // Check arg validity
-            MethodDefinition def = BuiltIns.MethodDefinitions[callName];
-            if (def.Arguments.Length != call.Arguments.Length) {
-                throw Error("Argument count mismatch in function call: " + callName + ". Expected " + def.Arguments.Length + " but got " + call.Arguments.Length);
+            method = BuiltIns.MethodDefinitions[callName];
+        }
+        else {
+            method = GetMethodDefinition(call, out parentClass);
+            if (method == null) {
+                throw Error("Unknown function call: " + callName);
             }
-            Value[] evaledArgs = new Value[call.Arguments.Length];
-            for (int i = 0; i < call.Arguments.Length; i++) {
-                evaledArgs[i] = ResolveValue(call.Arguments[i], def.ArgumentTypes[i]);
-            }
-            for (int i = 0; i < def.Arguments.Length; i++) {
-                if (def.ArgumentTypes[i] == "any" || (def.ArgumentTypes[i] == "any[]" && evaledArgs[i].ObjectType.EndsWith("[]"))) {
-                    continue;
-                }
-                if (def.ArgumentTypes[i] != evaledArgs[i].ObjectType) {
-                    throw Error("Argument type mismatch in function call: " + callName + ". Expected " + def.ArgumentTypes[i] + " but got " + evaledArgs[i].ObjectType + ".");
-                }
-            }
-            return function.Invoke(evaledArgs);
         }
         
-        MethodDefinition? method = GetMethodDefinition(call, out ClassInstance? parentClass);
-        if (method == null) {
-            throw Error("Unknown function call: " + callName);
+        // Add args to scope
+        if (method.Arguments.Length != call.Arguments.Length) {
+            throw Error("Argument count mismatch in function call: " + callName + ". Expected " + method.Arguments.Length + " but got " + call.Arguments.Length);
         }
-
-        NewScope();
+        Value[] evaledArgs = new Value[call.Arguments.Length];
+        for (int i = 0; i < call.Arguments.Length; i++) {
+            evaledArgs[i] = ResolveValue(call.Arguments[i], method.ArgumentTypes[i]);
+        }
+        for (int i = 0; i < method.Arguments.Length; i++) {
+            if (method.ArgumentTypes[i] == "any" || (method.ArgumentTypes[i] == "any[]" && evaledArgs[i].ObjectType.EndsWith("[]"))) {
+                continue;
+            }
+            if (method.ArgumentTypes[i] != evaledArgs[i].ObjectType) {
+                throw Error("Argument type mismatch in function call: " + callName + ". Expected " + method.ArgumentTypes[i] + " but got " + evaledArgs[i].ObjectType + ".");
+            }
+        }
+        
+        // Add parent class members to scope
         if (parentClass != null) {
-            // Add its variables and methods to the scope
             foreach (KeyValuePair<string, (string, Value)> kvp in parentClass.Properties) {
                 CurrentScope.Variables[kvp.Key] = kvp.Value;
             }
@@ -369,9 +378,11 @@ public static class Interpreter {
             }
         }
 
-        Value result = EvalFunction(method, call.Arguments, callName);
+        // Run the function
+        Value result = function == null ? EvalFunction(method, evaledArgs, callName) : function.Invoke(evaledArgs);
+        result = ResolveValue(result);
         
-        // Check for changed variables
+        // Check for changed variables if there was a parent class
         if (parentClass != null) {
             Debug("Checking for changed variables in class...");
             foreach (KeyValuePair<string, (string, Value)> kvp in parentClass.Properties) {
@@ -380,6 +391,7 @@ public static class Interpreter {
             }
         }
         
+        // Tidy up
         EndScope();
         if (parentClass != null) {
             SetVariable(call.Path[..^1], parentClass);
@@ -421,6 +433,7 @@ public static class Interpreter {
         }
 
         Value result = method.CsFunc != null ? method.CsFunc.Invoke(args) : ExecuteFunction(method);
+        result = ResolveValue(result);
         EndScope();
         return result;
     }

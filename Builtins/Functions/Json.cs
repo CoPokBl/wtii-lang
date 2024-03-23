@@ -92,24 +92,46 @@ public static class Json {
         
         JObject jObject = JObject.Parse(json);
         Dictionary<string, (string, Value)> properties = new();
-        foreach (KeyValuePair<string, JToken> kvp in jObject) {
-            Value value = kvp.Value.Type switch {
-                JTokenType.Boolean => new Constant(kvp.Value.Value<bool>().ToString(), "bool"),
-                JTokenType.Integer => new Constant(kvp.Value.Value<int>().ToString(), "int"),
-                JTokenType.Float => new Constant(kvp.Value.Value<double>().ToString(CultureInfo.InvariantCulture), "float"),
-                JTokenType.String => new Constant(kvp.Value.Value<string>()!, "string"),
-                JTokenType.Null => new Constant("null", "null"),
-                JTokenType.Object => FromJson(new Value[] {
-                    new Constant(kvp.Value.ToString(), "string"),
-                    new Constant(resultType.Variables.Single(i => i.Name == kvp.Key).VariableType, "string")  // Parse this object to the type of the corresponding field
-                }),
-                _ => throw Interpreter.Error("Unknown type in JSON object.")
-            };
+        foreach (KeyValuePair<string, JToken?> kvp in jObject) {
+            Value value = ParseJsonToken(kvp.Value!);
             properties.Add(kvp.Key, (value.ObjectType, value));
         }
 
         ClassInstance instance = new(resultType, properties);
         return instance;
+    }
+    
+    public static Value ParseJsonToken(JToken token) {
+        return token.Type switch {
+            JTokenType.Boolean => new Constant(token.Value<bool>().ToString(), "bool"),
+            JTokenType.Integer => new Constant(token.Value<int>().ToString(), "int"),
+            JTokenType.Float => new Constant(token.Value<double>().ToString(CultureInfo.InvariantCulture), "float"),
+            JTokenType.String => new Constant(token.Value<string>()!, "string"),
+            JTokenType.Null => new Constant("null", "null"),
+            JTokenType.Object => FromJson(new Value[] {
+                new Constant(token.ToString(), "string"),
+                new Constant("object", "string")
+            }),
+            JTokenType.Array => ParseJsonArray((token as JArray)!),
+            _ => throw Interpreter.Error("Unknown type in JSON object.")
+        };
+    }
+    
+    public static Value ParseJsonArray(JArray array) {
+        List<Value> values = new();
+        foreach (JToken token in array) {
+            values.Add(ParseJsonToken(token));
+        }
+        
+        // Try to find common type
+        string commonType = values.Count == 0 ? "NULL" : values[0].ObjectType;
+        foreach (Value value in values) {
+            if (value.ObjectType != commonType) {
+                throw Interpreter.Error("Array contains multiple types and therefore cannot be parsed.");
+            }
+        }
+        
+        return new ArrayValue(commonType, values.ToArray());
     }
     
 }
