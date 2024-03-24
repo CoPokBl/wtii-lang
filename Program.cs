@@ -28,6 +28,9 @@ if (!File.Exists(file)) {
 string code = File.ReadAllText(file);
 ParsedScript script = Parser.Parse(code);
 
+string filename = Path.GetFileNameWithoutExtension(file);
+File.WriteAllText($"{filename}.wtiic", JsonConvert.SerializeObject(script, Formatting.Indented));
+
 if (File.Exists("libwtiiint.so")) {  // Run with C++ for speed if available
     return CppInterpreter.interpret("parsed_script.json");
 }

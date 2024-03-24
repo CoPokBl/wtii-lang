@@ -9,6 +9,14 @@ public class Scope {
     public readonly Dictionary<string, (string, Value)> Variables = new();  // <name, (type, value)>
     public readonly Dictionary<string, MethodDefinition> Functions = new();
     public readonly Dictionary<string, ClassDefinition> Classes = new();
+    
+    /// <summary>
+    /// Whether or not to check for undefined variables/methods/classes.
+    /// If this is false, the parsed will not check for anything.
+    /// Should only be enabled when script loads libraries that cannot
+    /// be parsed by the parser.
+    /// </summary>
+    internal bool ChecksEnabled = true;
 
     public Scope() { }
     
@@ -16,6 +24,7 @@ public class Scope {
         Variables = new Dictionary<string, (string, Value)>(parent.Variables);
         Functions = new Dictionary<string, MethodDefinition>(parent.Functions);
         Classes = new Dictionary<string, ClassDefinition>(parent.Classes);
+        ChecksEnabled = parent.ChecksEnabled;
     }
 
     public Scope(bool loadBuiltins) {

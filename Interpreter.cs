@@ -127,6 +127,16 @@ public static class Interpreter {
                 break;
             }
 
+            case ".json": {
+                ParsedScript script = JsonConvert.DeserializeObject<ParsedScript>(File.ReadAllText(path))!;
+                LoadClasses(script.Classes);
+                MethodDefinition method = new("main", "int") {
+                    Statements = script.Statements
+                };
+                ExecuteFunction(method);
+                break;
+            }
+
             case "": {
                 if (!BuiltIns.Libraries.ContainsKey(path)) {
                     throw Error("Library file type not supported: " + fileExtension);

@@ -44,6 +44,10 @@ public static class Parser {
     /// </summary>
     private static void EndScope() => Scopes.Pop();
     
+    /// <summary>
+    /// Used to keep track of the line being parsed for debugging purposes.
+    /// This line is printed when an error occurs.
+    /// </summary>
     private static string CurrentLine = "";
 
     /// <summary>
@@ -303,6 +307,12 @@ public static class Parser {
         if (CurrentScope.Classes.ContainsKey(value) || PrimitiveTypes.Contains(value)) {  // We have a class reference
             type = "class";
             return new Constant(value, "class");
+        }
+
+        if (value.StartsWith("class ")) {  // Another way to class reference incase scope checks are disabled
+            string className = value[6..];
+            type = "class";
+            return new Constant(className, "class");
         }
         
         if (value is "true" or "false") {
@@ -581,6 +591,26 @@ public static class Parser {
                     libraries.Add(library);
                 }
 
+                break;
+            }
+
+            case "wtiic":
+            case "json": {  // Script is already parsed for us
+                ParsedScript script = JsonConvert.DeserializeObject<ParsedScript>(File.ReadAllText(path))!;
+                foreach (ClassDefinition cd in script.Classes) {
+                    CurrentScope.Classes[cd.Name] = cd;
+                }
+                foreach (Statement statement in script.Statements) {
+                    if (statement is not MethodDefinition method) {
+                        continue;
+                    }
+                    CurrentScope.Functions[method.Name] = method;
+                }
+                break;
+            }
+
+            case ".so": {  // C++ library, we can't really do any verification if we load this
+                CurrentScope.ChecksEnabled = false;
                 break;
             }
 
@@ -910,9 +940,6 @@ public static class Parser {
             Statements = statements.ToArray(),
             Classes = classes.ToArray()
         };
-        
-        // It has now been 'compiled' so that it can be saved and loaded
-        File.WriteAllText("script_parsed.json", JsonConvert.SerializeObject(script, Formatting.Indented));
 
         return script;
     }
